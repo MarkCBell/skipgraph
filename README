@@ -1,0 +1,30 @@
+
+Getting started
+===============
+
+Compile the cGraphs etension using::
+
+	> sage --python setup.py install --user
+
+The code can also be compiled for python by using::
+
+	> python setup.py install --user
+
+To compare this classes algorithm with sage's builtin graph.diameter() algorithm use::
+
+	> sage --python test.py
+
+Idea
+====
+
+The key lemma which powers this method and provides the large speedup is that:
+
+	|ecc(x) - ecc(y)| <= d(x, y).
+	
+Hence if ecc(v) is large and and we have just found that ecc(x) is small then
+we know that any vertex y in B(x, ecc(w) - ecc(x)) must have ecc(y) <= ecc(w).
+
+Thus in searching for a vertex with eccentricty larger than that of w we can
+skip everything in this ball. Furthermore, as we compute ecc(x) by performing
+a DFT of the graph, the vertices in this ball are essentially already known.
+
