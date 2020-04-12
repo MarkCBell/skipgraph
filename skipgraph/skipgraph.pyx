@@ -9,105 +9,82 @@ cdef class Graph:
     cdef long num_vertices
     cdef array.array starts
     
-    cdef long[:] vertices
-    cdef array.array breaks
+    cdef array.array _vertices
+    cdef array.array _breaks
+    cdef long _eccentricity
     
     def __init__(self, graph):
-        cdef array.array starts
-        self.graph = array.array('l', [e for v in graph for e in v])
+        self.graph = array.array('l', (e for v in graph for e in v))
         self.num_vertices = len(graph)
-        starts = array.array('l', [0])
+        self.starts = array.array('l', b'\0')
         for v in graph:
-            starts.append(starts[-1] + len(v))
-        self.starts = starts
+            self.starts.append(self.starts[-1] + len(v))
     
-    @cython.boundscheck(False)  # Deactivate bounds checking
-    @cython.wraparound(False)   # Deactivate negative indexing.
     cdef DFT(self, long start):
         cdef long head = 0
         cdef long tail = 1
         cdef long current, adjacent
-        cdef long degree
-        cdef long current_start
         cdef long i
-        cdef long[:] seen = array.clone(long_array_template, self.num_vertices, True)
+        cdef array.array seen = array.clone(long_array_template, self.num_vertices, True)
         cdef long last_break = tail
-        cdef long[:] vertices = array.clone(long_array_template, self.num_vertices, True)
-        cdef array.array breaks = array.array('l', [last_break])
         
-        vertices[0] = start
-        seen[start] = True
+        self._vertices = array.clone(long_array_template, self.num_vertices, True)
+        self._breaks = array.array('l', [tail])
+        self._eccentricity = 0
+        
+        self._vertices.data.as_longs[0] = start
+        seen.data.as_longs[start] = True
         
         for head in range(self.num_vertices):
             if head == tail:  # Disconnected
                 raise ValueError('Graph is disconnected')
             if head == last_break:
-                breaks.append(tail)
+                self._breaks.append(tail)
+                self._eccentricity += 1
                 last_break = tail
-            current = vertices[head]
-            current_start = self.starts.data.as_longs[current]
-            degree = self.starts.data.as_longs[current+1] - current_start
-            for i in range(current_start, current_start + degree):
+            current = self._vertices.data.as_longs[head]
+            for i in range(self.starts.data.as_longs[current], self.starts.data.as_longs[current+1]):
                 adjacent = self.graph.data.as_longs[i]
-                if not seen[adjacent]:
-                    seen[adjacent] = True
-                    vertices[tail] = adjacent
+                if not seen.data.as_longs[adjacent]:
+                    seen.data.as_longs[adjacent] = True
+                    self._vertices.data.as_longs[tail] = adjacent
                     tail += 1
-        
-        self.vertices = vertices
-        self.breaks = breaks
     
-    @cython.boundscheck(False)  # Deactivate bounds checking
-    @cython.wraparound(False)   # Deactivate negative indexing.
     def diameter(self):
-        cdef long start, j
-        cdef long max_eccentricity = 0, eccentricity
-        cdef long[:] done = array.clone(long_array_template, self.num_vertices, True)
-        cdef long[:] vertices
-        cdef long[:] breaks
-        cdef long num_reset
+        cdef long start, i, num_reset
+        cdef long max_eccentricity = 0
+        cdef array.array done = array.clone(long_array_template, self.num_vertices, True)
 
         for start in range(self.num_vertices):
-            if done[start]:
+            if done.data.as_longs[start]:
                 continue
             
             self.DFT(start)
-            vertices = self.vertices
-            breaks = self.breaks
-            eccentricity = len(breaks) - 1
-            if eccentricity >= max_eccentricity:
-                max_eccentricity = eccentricity
+            if self._eccentricity >= max_eccentricity:
+                max_eccentricity = self._eccentricity
             else:
-                num_reset = breaks[max_eccentricity - eccentricity]
+                num_reset = self._breaks.data.as_longs[max_eccentricity - self._eccentricity]
                 for i in range(num_reset):
-                    done[vertices[i]] = True
+                    done.data.as_longs[self._vertices.data.as_longs[i]] = True
         
         return max_eccentricity
     
-    @cython.boundscheck(False)  # Deactivate bounds checking
-    @cython.wraparound(False)   # Deactivate negative indexing.
     def radius(self):
-        cdef long start, i
-        cdef long min_eccentricity = self.num_vertices, eccentricity
-        cdef long[:] done = array.clone(long_array_template, self.num_vertices, True)
-        cdef long[:] vertices
-        cdef long[:] breaks
-        cdef long num_reset
+        cdef long start, i, num_reset
+        cdef long min_eccentricity = self.num_vertices
+        cdef array.array done = array.clone(long_array_template, self.num_vertices, True)
 
         for start in range(self.num_vertices):
-            if done[start]:
+            if done.data.as_longs[start]:
                 continue
             
-            self.DFT(start)
-            vertices = self.vertices
-            breaks = self.breaks
-            eccentricity = len(breaks) - 1
-            if eccentricity <= min_eccentricity:
-                min_eccentricity = eccentricity
+            _ = self.DFT(start)
+            if self._eccentricity <= min_eccentricity:
+                min_eccentricity = self._eccentricity
             else:
-                num_reset = breaks[eccentricity - min_eccentricity]
+                num_reset = self._breaks.data.as_longs[self._eccentricity - min_eccentricity]
                 for i in range(num_reset):
-                    done[vertices[i]] = True
+                    done.data.as_longs[self._vertices.data.as_longs[i]] = True
         
         return min_eccentricity
 
