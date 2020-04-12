@@ -1,5 +1,5 @@
 
-from cGraph import Graph
+from .skipgraph import Graph
 from glob import glob
 
 def dot(file_glob):

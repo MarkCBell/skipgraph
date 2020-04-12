@@ -1,3 +1,3 @@
 
-from cGraph import Graph
-import load
+from .skipgraph import Graph
+# import load

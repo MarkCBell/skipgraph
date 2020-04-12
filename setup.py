@@ -1,13 +1,16 @@
-from setuptools import setup, find_packages, Extension
-
-cgraph_ext = Extension('cGraph', sources = ['./skipgraph/graph.c'])
+from setuptools import setup, find_packages
+from Cython.Build import cythonize
 
 setup(
-	name = 'skipgraph',
-	version = '0.1',
-	packages=['skipgraph'],
-	package_dir={'skipgraph': 'skipgraph'},
-	description = 'A graph library which implements the ball skip algorithm to compute diameters quickly.',
-	ext_modules = [cgraph_ext]
-	)
+    name='skipgraph',
+    version='0.1.0',
+    author='Mark Bell',
+    author_email='mcbell@illinois.edu',
+    license='MIT License',
+    packages=find_packages(),
+    ext_modules=cythonize([
+        './skipgraph/skipgraph.pyx',
+        ], annotate=True, language_level=3),
+    description = 'A graph library which implements the ball skip algorithm to compute diameters quickly.',
+    )
 

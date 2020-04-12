@@ -1,7 +1,10 @@
 
 from time import time
-from cGraph import Graph
+from skipgraph import Graph
 from sage.all import graphs
+
+def chain(length):
+	return Graph([[1]] + [[i-1, i+1] for i in range(1, length)] + [[length-1]])
 
 def convert(G):
 	''' Convert a Sage graph to a cGraph. '''
